@@ -15,9 +15,6 @@ Camera::Camera() {
 
 Camera::~Camera() {
     // Destruktor
-    if (stream_httpd) {
-        httpd_stop(stream_httpd);
-    }
 }
 
 bool Camera::init() {
@@ -47,13 +44,13 @@ bool Camera::init() {
     config.pixel_format = PIXFORMAT_JPEG; 
     
     if(psramFound()){
-        config.frame_size = FRAMESIZE_XGA;  // Auf VGA (640x480) reduzieren statt XGA
-        config.jpeg_quality = 12;
+        config.frame_size = FRAMESIZE_QVGA;  // Kleinere Auflösung für WebSocket-Streaming
+        config.jpeg_quality = 20;            // Höhere Qualität = größere Zahl = kleinere Datei
         config.fb_count = 2;
     }
     else
     {
-        config.frame_size = FRAMESIZE_CIF;  // Noch kleiner: CIF (400x296)
+        config.frame_size = FRAMESIZE_CIF;
         config.jpeg_quality = 10;
         config.fb_count = 1;
     }
@@ -88,66 +85,22 @@ bool Camera::connectToWiFi() {
     return true;
 }
 
-void Camera::startStreamServer() {
-    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    config.server_port = 80;
-
-    httpd_uri_t index_uri = {
-        .uri       = "/",
-        .method    = HTTP_GET,
-        .handler   = streamHandler,
-        .user_ctx  = NULL
-    };
-    
-    if (httpd_start(&stream_httpd, &config) == ESP_OK) {
-        httpd_register_uri_handler(stream_httpd, &index_uri);
-        Serial.println("Stream server started");
-    } else {
-        Serial.println("Failed to start stream server");
-    }
-}
-
 void Camera::printStreamInfo() {
     Serial.println("");
     Serial.print("Camera Stream Ready! Go to: http://");
     Serial.println(WiFi.localIP());
 }
 
-esp_err_t Camera::streamHandler(httpd_req_t *req) {
-  camera_fb_t * fb = NULL;
-  esp_err_t res = httpd_resp_set_type(req, _STREAM_CONTENT_TYPE);
-  if (res != ESP_OK) return res;
-
-  char part_buf[64];
-
-  while (true) {
-    fb = esp_camera_fb_get();
+camera_fb_t* Camera::getFrame() {
+    camera_fb_t* fb = esp_camera_fb_get();
     if (!fb) {
-      Serial.println("Camera capture failed");
-      return ESP_FAIL;
+        Serial.println("esp_camera_fb_get() failed!");
     }
+    return fb;
+}
 
-    // Verwende direkt das JPEG vom Framebuffer, keine Konvertierung
-    size_t jpg_buf_len = fb->len;
-    uint8_t *jpg_buf = fb->buf;
-
-    // HTTP Header für Chunk schreiben
-    size_t hlen = snprintf(part_buf, sizeof(part_buf), _STREAM_PART, jpg_buf_len);
-    res = httpd_resp_send_chunk(req, part_buf, hlen);
-    if (res != ESP_OK) break;
-
-    // Bilddaten senden
-    res = httpd_resp_send_chunk(req, (const char *)jpg_buf, jpg_buf_len);
-    if (res != ESP_OK) break;
-
-    // Boundary senden
-    res = httpd_resp_send_chunk(req, _STREAM_BOUNDARY, strlen(_STREAM_BOUNDARY));
-    if (res != ESP_OK) break;
-
-    esp_camera_fb_return(fb); // Buffer zurückgeben
-    fb = NULL;
-  }
-
-  if (fb) esp_camera_fb_return(fb);
-  return res;
+void Camera::returnFrame(camera_fb_t* fb) {
+    if (fb) {
+        esp_camera_fb_return(fb);
+    }
 }
