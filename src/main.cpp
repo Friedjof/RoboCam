@@ -47,8 +47,6 @@ void streamTask(void *parameter) {
         }
       }
 
-      Serial.printf("Clients ready: %d, anyReady=%d, clientsWantStream=%d\n", ws.count(), anyReady, clientsWantStream);
-
       if (clientsWantStream && anyReady) {
         camera_fb_t * fb = camera.getFrame();
         if (fb) {
@@ -80,6 +78,14 @@ void onWebSocketEvent(AsyncWebSocket * server, AsyncWebSocketClient * client,
     clientStreamMap.erase(client->id());
   } else if (type == WS_EVT_DATA) {
     String msg = String((const char*)data, len);
+    if (msg == "getframe") {
+      camera_fb_t * fb = camera.getFrame();
+      if (fb) {
+        client->binary(fb->buf, fb->len);
+        camera.returnFrame(fb);
+      }
+      return;
+    }
     if (msg == "stream") {
       clientStreamMap[client->id()] = true;
       clientsWantStream = true;
@@ -141,7 +147,7 @@ void setup() {
   server.addHandler(&ws);
 
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(200, "text/html",
+  request->send(200, "text/html",
       "<!DOCTYPE html><html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width,initial-scale=1.0'>"
       "<title>RoboCam</title>"
       "<style>"
@@ -170,11 +176,13 @@ void setup() {
       "  } else {"
       "    let url = URL.createObjectURL(e.data);"
       "    document.getElementById('cam').src = url;"
-      "    setTimeout(() => URL.revokeObjectURL(url), 100);"
+      "    setTimeout(function() { URL.revokeObjectURL(url); }, 100);"
       "  }"
       "};"
       "ws.onopen = function() {"
-      "  ws.send('stream');"
+      "  setInterval(function() {"
+      "    if (ws.readyState === 1) ws.send('getframe');"
+      "  }, 100);"
       "};"
       "function send(cmd) { if (ws.readyState === 1) ws.send(cmd); }"
       "</script></body></html>"

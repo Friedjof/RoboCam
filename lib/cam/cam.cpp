@@ -44,8 +44,8 @@ bool Camera::init() {
     config.pixel_format = PIXFORMAT_JPEG; 
     
     if(psramFound()){
-        config.frame_size = FRAMESIZE_QVGA;  // Kleinere Auflösung für WebSocket-Streaming
-        config.jpeg_quality = 20;            // Höhere Qualität = größere Zahl = kleinere Datei
+        config.frame_size = FRAMESIZE_SVGA;  // Kleinere Auflösung für WebSocket-Streaming
+        config.jpeg_quality = 10;            // Höhere Qualität = größere Zahl = kleinere Datei
         config.fb_count = 2;
     }
     else
