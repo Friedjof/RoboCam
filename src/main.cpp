@@ -20,19 +20,20 @@ uint16_t client_count = 0;
 void onWebSocketEvent(AsyncWebSocket * server, AsyncWebSocketClient * client,
                       AwsEventType type, void * arg, uint8_t *data, size_t len) {
   if (type == WS_EVT_CONNECT) {
-    if (client_count >= MAX_CONNECTIONS) {
+    if (server->count() > MAX_CLIENTS) {
       client->close();
       Serial.println("Client limit reached, closing connection.");
       return;
     }
-    client_count++;
+
+    client_count = server->count();
     Serial.printf("Client connected: %u\n", client->id());
-    
+
     ws.textAll(String("{\"client_count\":") + client_count + "}");
   } else if (type == WS_EVT_DISCONNECT) {
-    client_count--;
+    client_count = server->count();
     Serial.printf("Client disconnected: %u\n", client->id());
-    
+
     ws.textAll(String("{\"client_count\":") + client_count + "}");
   } else if (type == WS_EVT_DATA) {
     String msg = String((const char*)data, len);
@@ -63,15 +64,11 @@ void onWebSocketEvent(AsyncWebSocket * server, AsyncWebSocketClient * client,
         int x = doc["x"];
         int y = doc["y"];
         robo.setPosition(x, y);
-        client->text(String("{\"x\":") + x + ",\"y\":" + y + "}");
-        return;
       } else {
         Serial.println("Invalid JSON command");
         return;
       }
-    }
-
-    if (msg == "center") {
+    } else if (msg == "center") {
       newX = START_POS_X;
       newY = START_POS_Y;
     } else if (msg == "up") {
@@ -104,7 +101,7 @@ void onWebSocketEvent(AsyncWebSocket * server, AsyncWebSocketClient * client,
       robo.setPosition(newX, newY);
     }
 
-    client->text(String("{\"x\":") + newX + ",\"y\":" + newY + "}");
+    ws.textAll(String("{\"x\":") + newX + ",\"y\":" + newY + "}");
   }
 }
 
@@ -204,6 +201,11 @@ void setup() {
       "    ws.send('get_limits');"
       "    ws.send('get_pos');"
       "    ws.send('getframe');"
+      "  }"
+      "};"
+      "window.onbeforeunload = function() {"
+      "  if (ws && ws.readyState === 1) {"
+      "    ws.close();"
       "  }"
       "};"
       "function sliderUpdate() {"

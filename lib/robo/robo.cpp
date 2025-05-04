@@ -12,20 +12,14 @@ Robo::~Robo() {
     servo2.detach();
 }
 
-// Initialisierung der Servos
 void Robo::init() {
-    // ESP32PWM::allocateTimer(0);  // Optional: Timer zuweisen
-    // ESP32PWM::allocateTimer(1);
-    
-    // Servos an GPIO-Pins anschließen
-    servo1.setPeriodHertz(50);      // Standard-PWM-Frequenz für Servos
-    servo1.attach(GPIO_SERVO_1, 500, 2400); // Min und Max Pulsdauer in Mikrosekunden
+    servo1.setPeriodHertz(50);
+    servo1.attach(GPIO_SERVO_1, 500, 2400);
     
     servo2.setPeriodHertz(50);
     servo2.attach(GPIO_SERVO_2, 500, 2400);
     
-    // Startposition einstellen
-    setPosition(posX, posY);
+    setPosition(START_POS_X, START_POS_Y);
     
     Serial.println("Servos initialized");
 }
