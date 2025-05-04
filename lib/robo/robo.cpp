@@ -36,13 +36,29 @@ void Robo::setPosition(int x, int y) {
     x = constrain(x, MIN_POS_X, MAX_POS_X);
     y = constrain(y, MIN_POS_Y, MAX_POS_Y);
     
-    // Servos auf neue Position setzen
-    servo1.write(x);
-    servo2.write(y);
-    
     // Aktuelle Position speichern
-    posX = x;
-    posY = y;
+    goalX = x;
+    goalY = y;
     
     Serial.printf("Servo position set to X: %d, Y: %d\n", x, y);
+}
+
+void Robo::loop() {
+    if (millis() - lastUpdateTime > interval && (posX != goalX || posY != goalY)) {
+        // Easing-Formel: Neuer Wert ist ein Stück näher am Ziel
+        float newX = posX + (goalX - posX) * easing;
+        float newY = posY + (goalY - posY) * easing;
+
+        // Wenn nahe genug am Ziel, direkt auf Ziel setzen
+        if (abs(newX - goalX) < 1.0f) newX = goalX;
+        if (abs(newY - goalY) < 1.0f) newY = goalY;
+
+        servo1.write((int)newX);
+        servo2.write((int)newY);
+
+        posX = (int)newX;
+        posY = (int)newY;
+
+        lastUpdateTime = millis();
+    }
 }

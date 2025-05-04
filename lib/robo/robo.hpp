@@ -11,7 +11,18 @@ private:
 
     int posX;
     int posY;
-  
+
+    int goalX;
+    int goalY;
+
+    uint32_t lastUpdateTime = 0;
+
+    uint8_t updateSteps = 2;
+
+    const unsigned long interval = 60;
+
+    const float easing = 0.2f;
+
 public:
     Robo();
     ~Robo();
@@ -25,4 +36,6 @@ public:
     // Getter für aktuelle Positionen
     int getPositionX() { return posX; }
     int getPositionY() { return posY; }
+
+    void loop();
 };
