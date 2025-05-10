@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Login | RoboCam Proxy</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    {% include 'components/header.html' %}
+    <div class="container">
+        <h1 class="title">Login</h1>
+        <form method="post" action="/login">
+            <label for="username">Benutzername:</label>
+            <input type="text" id="username" name="username" required>
+            <br>
+            <label for="password">Passwort:</label>
+            <input type="password" id="password" name="password" required>
+            <br>
+            <button type="submit">Anmelden</button>
+        </form>
+    </div>
+    {% include 'components/footer.html' %}
+</body>
+</html>

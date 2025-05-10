@@ -1,0 +1,19 @@
+<header>
+  <h2>RoboCam Proxy</h2>
+  <nav>
+    <ul>
+      {% if username %}
+        <li>
+          Willkommen, {{ username }}!
+        </li>
+      {% endif %}
+      <li>
+        {% if request.path == url_for('login') %}
+          <a href="https://github.com/Friedjof/RoboCam">How to create an account</a>
+        {% elif request.path == url_for('index') %}
+          <a href="{{ url_for('logout') }}">Logout</a>
+        {% endif %}
+      </li>
+    </ul>
+  </nav>
+</header>

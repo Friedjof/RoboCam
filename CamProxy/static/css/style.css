@@ -1,0 +1,142 @@
+body {
+    font-family: Arial, sans-serif;
+    background: #f4f4f4;
+    margin: 0;
+    padding: 0;
+}
+
+header {
+    background: #222;
+    color: #fff;
+    padding: 1em 0;
+    text-align: center;
+    border-radius: 8px;
+    margin: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-sizing: border-box;
+}
+
+header h2 {
+    margin: 0 1em;
+    font-size: 1.5em;
+}
+
+footer {
+    background: #222;
+    color: #fff;
+    padding: 1em 0;
+    text-align: center;
+    border-radius: 8px;
+    margin: 10px;
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    margin: 0;
+    border-radius: 0;
+}
+
+nav {
+    margin-right: 1em;
+}
+
+nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    gap: 1em;
+    align-items: center;
+}
+
+nav ul li {
+    display: inline;
+}
+
+nav ul li a {
+    color: #222;
+    background: #fff;
+    text-decoration: none;
+    font-weight: bold;
+    padding: 0.3em 1.2em;
+    border-radius: 999px;
+    transition: background 0.2s, color 0.2s;
+    font-size: 1em;
+    display: inline-block;
+    border: 1px solid #fff;
+}
+
+nav ul li a:hover {
+    background: #222;
+    color: #fff;
+    border: 1px solid #fff;
+}
+
+.container {
+    max-width: 800px;
+    margin: 40px auto;
+    background: #fff;
+    padding: 10px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+h1 {
+    color: #333;
+}
+
+#camera-stream {
+    width: 100%;
+    max-width: 640px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-top: 1em;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6em;
+    max-width: 300px;
+    margin: 1.5em auto 0 auto;
+    padding: 1.2em;
+    border-radius: 8px;
+}
+
+form label {
+    font-weight: bold;
+    margin-bottom: 0.3em;
+    color: #222;
+}
+
+form input[type="text"],
+form input[type="password"] {
+    padding: 0.6em;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    font-size: 1em;
+    background: #fff;
+}
+
+form button[type="submit"] {
+    background: #222;
+    color: #fff;
+    border: none;
+    padding: 0.8em;
+    border-radius: 4px;
+    font-size: 1em;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+form button[type="submit"]:hover {
+    background: #444;
+}
+
+.title {
+    font-size: 3em;
+    margin-bottom: 0.5em;
+    text-align: center;
+}

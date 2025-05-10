@@ -6,9 +6,12 @@
 #include <ArduinoJson.h>
 
 
+#include "light.hpp"
 #include "cam.hpp"
 #include "robo.hpp"
 
+
+Light light;
 Camera camera;
 Robo robo;
 
@@ -222,11 +225,18 @@ void setup() {
     );
   });
 
+  light.init();
+  light.setBrightness(10);
+  light.setColor(0xFFFFFF); // Weiß
+  light.show();
+
   server.begin();
   Serial.println("Setup complete. WebSocket server running.");
 }
 
 void loop() {
   robo.loop();
-  delay(10); // Kurze Pause, um die CPU-Last zu reduzieren
+  light.loop();
+  
+  delay(10);
 }
