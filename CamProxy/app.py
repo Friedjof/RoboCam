@@ -57,7 +57,7 @@ def esp32cam_listener():
                 if connected_clients > 0:
                     try:
                         ws.send('getframe')
-                        time.sleep(.1)
+                        time.sleep(.2)
                     except Exception as e:
                         print("Fehler beim Senden von getframe:", e)
                         break

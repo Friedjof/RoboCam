@@ -82,6 +82,11 @@ bool Camera::connectToWiFi() {
     }
     
     Serial.println("\nWiFi connected");
+    Serial.print("IP address: ");
+    Serial.println(WiFi.localIP());
+    Serial.print("Signal strength: ");
+    Serial.print(WiFi.RSSI());
+    Serial.println(" dBm");
     return true;
 }
 

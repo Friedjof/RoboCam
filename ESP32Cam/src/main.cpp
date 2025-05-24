@@ -19,6 +19,8 @@ AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 
 uint16_t client_count = 0;
+uint32_t last = millis();
+
 
 void onWebSocketEvent(AsyncWebSocket * server, AsyncWebSocketClient * client,
                       AwsEventType type, void * arg, uint8_t *data, size_t len) {
@@ -95,6 +97,15 @@ void onWebSocketEvent(AsyncWebSocket * server, AsyncWebSocketClient * client,
       client->text(String("{\"min_x\":") + MIN_POS_X + ",\"max_x\":" + MAX_POS_X +
                   ",\"min_y\":" + MIN_POS_Y + ",\"max_y\":" + MAX_POS_Y + "}");
       return;
+    } else if (msg == "light_on") {
+      light.setColor(0xFFFFFF); // Weiß
+      light.setBrightness(32);
+      Serial.println("Light on");
+      return;
+    } else if (msg == "light_off") {
+      light.clear();
+      Serial.println("Light off");
+      return;
     } else {
       Serial.println("Unknown command");
       return;
@@ -111,7 +122,14 @@ void onWebSocketEvent(AsyncWebSocket * server, AsyncWebSocketClient * client,
 
 void setup() {
   Serial.begin(115200);
-  setCpuFrequencyMhz(240);
+  //setCpuFrequencyMhz(240);
+
+  light.init();
+  light.setBrightness(10);
+  light.setColor(0xFFFFFF); // Weiß
+  light.show();
+
+  Serial.println("Starting up...");
 
   if (!camera.init()) {
     Serial.println("Camera init failed");
@@ -124,6 +142,9 @@ void setup() {
     Serial.println("WiFi connection failed");
     return;
   }
+
+  Serial.println("Connected to WiFi");
+  Serial.println("IP address: " + WiFi.localIP().toString());
 
   ws.onEvent(onWebSocketEvent);
   server.addHandler(&ws);
@@ -153,6 +174,9 @@ void setup() {
       "<button onclick=\"send('right')\">➡</button>"
       "</div><div><button onclick=\"send('down')\">⬇</button></div>"
       "</div>"
+      "<div style='margin-top:20px;'>"
+      "<button id='lightBtn' onclick=\"toggleLight()\">Licht AN</button>"
+      "</div>"
       "<div class='sliders'>"
       "<span class='slider-label'>X:</span>"
       "<input type='range' min='0' max='180' value='90' id='sliderX' oninput='sliderUpdate()'>"
@@ -170,6 +194,19 @@ void setup() {
       "};"
       "let lastX = 90, lastY = 90;"
       "let minX = 0, maxX = 180, minY = 0, maxY = 180;"
+      "let lightOn = true;"
+      "function toggleLight() {"
+      "  if (ws.readyState !== 1) return;"
+      "  if (lightOn) {"
+      "    ws.send('light_off');"
+      "    document.getElementById('lightBtn').textContent = 'Licht AN';"
+      "    lightOn = false;"
+      "  } else {"
+      "    ws.send('light_on');"
+      "    document.getElementById('lightBtn').textContent = 'Licht AUS';"
+      "    lightOn = true;"
+      "  }"
+      "}"
       "ws.onmessage = function(e) {"
       "  if (typeof e.data === 'string') {"
       "    try {"
@@ -225,18 +262,12 @@ void setup() {
     );
   });
 
-  light.init();
-  light.setBrightness(10);
-  light.setColor(0xFFFFFF); // Weiß
-  light.show();
-
   server.begin();
   Serial.println("Setup complete. WebSocket server running.");
 }
 
 void loop() {
   robo.loop();
+
   light.loop();
-  
-  delay(10);
 }
