@@ -12,6 +12,14 @@ Ein ESP32-basiertes ferngesteuertes Kamerasystem mit Live-Video-Streaming und Se
 - **Flask-Proxy-Server** für erweiterte Funktionen
 - **Benutzer-Authentifizierung** im Proxy-Modus
 
+## 📚 Workshop & Entstehungsgeschichte
+
+Dieses Projekt entstand aus dem **SUSCam Workshop vom 01.06.2024**. Der ursprüngliche Workshop-Code und die Grundlagen findest du hier:
+
+🔗 **[SUSCam Workshop Repository](https://github.com/Friedjof/SUSCam)**
+
+Das RoboCam-Projekt erweitert die Workshop-Grundlagen um erweiterte Features wie Proxy-Server, Authentifizierung und verbesserte Hardware-Steuerung.
+
 ## 🏗️ Hardware-Anforderungen
 
 ### ESP32Cam
