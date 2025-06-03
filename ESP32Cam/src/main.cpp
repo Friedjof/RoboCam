@@ -1,8 +1,11 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <map>
+
+#define WS_MAX_QUEUED_MESSAGES 5
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
+
 #include <ArduinoJson.h>
 
 
@@ -19,7 +22,7 @@ AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 
 uint16_t client_count = 0;
-uint32_t last = millis();
+uint32_t last_img = millis();
 
 
 void onWebSocketEvent(AsyncWebSocket * server, AsyncWebSocketClient * client,
@@ -68,6 +71,12 @@ void onWebSocketEvent(AsyncWebSocket * server, AsyncWebSocketClient * client,
       if (!err && doc["x"].is<int>() && doc["y"].is<int>()) {
         int x = doc["x"];
         int y = doc["y"];
+        // Validate limits
+        if (x < MIN_POS_X || x > MAX_POS_X || y < MIN_POS_Y || y > MAX_POS_Y) {
+          client->text("Position out of bounds");
+          Serial.println("Position out of bounds");
+          return;
+        }
         robo.setPosition(x, y);
       } else {
         Serial.println("Invalid JSON command");
@@ -87,9 +96,6 @@ void onWebSocketEvent(AsyncWebSocket * server, AsyncWebSocketClient * client,
     } else if (msg == "get_pos") {
       client->text(String("{\"x\":") + currentX + ",\"y\":" + currentY + "}");
       return;
-    } else if (msg == "get_sessions") {
-      client->text(String("{\"sessions\":") + server->count() + "}");
-      return;
     } else if (msg == "client_count") {
       client->text(String("{\"client_count\":") + client_count + "}");
       return;
@@ -98,13 +104,13 @@ void onWebSocketEvent(AsyncWebSocket * server, AsyncWebSocketClient * client,
                   ",\"min_y\":" + MIN_POS_Y + ",\"max_y\":" + MAX_POS_Y + "}");
       return;
     } else if (msg == "light_on") {
-      light.setColor(0xFFFFFF); // Weiß
-      light.setBrightness(32);
-      Serial.println("Light on");
+      //light.setColor(0xFFFFFF); // White
+      //light.setBrightness(32);
+      Serial.println("Light on (deactivated for now)");
       return;
     } else if (msg == "light_off") {
-      light.clear();
-      Serial.println("Light off");
+      //light.clear();
+      Serial.println("Light off (deactivated for now)");
       return;
     } else {
       Serial.println("Unknown command");
@@ -117,6 +123,23 @@ void onWebSocketEvent(AsyncWebSocket * server, AsyncWebSocketClient * client,
 
     ws.textAll(String("{\"x\":") + newX + ",\"y\":" + newY + "}");
   }
+}
+
+
+void sendFrameToClients() {
+  if (millis() - last_img < FRAME_INTERVAL || ws.count() == 0) {
+    return; // Frame-Intervall einhalten
+  }
+
+  camera_fb_t * fb = camera.getFrame();
+  if (fb) {
+    ws.binaryAll(fb->buf, fb->len);
+    camera.returnFrame(fb);
+  } else {
+    Serial.println("Failed to get frame from camera");
+  }
+
+  last_img = millis();
 }
 
 
@@ -146,13 +169,15 @@ void setup() {
   Serial.println("Connected to WiFi");
   Serial.println("IP address: " + WiFi.localIP().toString());
 
+  WiFi.setSleep(false);
+
   ws.onEvent(onWebSocketEvent);
   server.addHandler(&ws);
 
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
     request->send(200, "text/html",
       "<!DOCTYPE html><html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width,initial-scale=1.0'>"
-      "<title>RoboCam</title>"
+      "<title>SUSCam</title>"
       "<style>"
       "body { background-color: #121212; color: #f0f0f0; font-family: sans-serif; text-align: center; padding: 20px; }"
       "img { border: 2px solid #555; border-radius: 8px; background: #000; width: 800px; height: 600px; }"
@@ -164,7 +189,7 @@ void setup() {
       ".client-count { position: absolute; top: 20px; right: 40px; background: #222; padding: 8px 16px; border-radius: 8px; font-size: 18px; opacity: 0.85; z-index: 10; }"
       "</style></head><body>"
       "<div class='client-count'>Clients: <span id='clientCount'>?</span></div>"
-      "<h1>RoboCam</h1>"
+      "<h1>SUSCam</h1>"
       "<img id='cam' width='800' height='600'>"
       "<div class='controls'>"
       "<div><button onclick=\"send('up')\">⬆</button></div>"
@@ -233,14 +258,12 @@ void setup() {
       "    var url = URL.createObjectURL(e.data);"
       "    document.getElementById('cam').src = url;"
       "    setTimeout(function() { URL.revokeObjectURL(url); }, 100);"
-      "    if (ws.readyState === 1) ws.send('getframe');"
       "  }"
       "};"
       "ws.onopen = function() {"
       "  if (ws.readyState === 1) {"
       "    ws.send('get_limits');"
       "    ws.send('get_pos');"
-      "    ws.send('getframe');"
       "  }"
       "};"
       "window.onbeforeunload = function() {"
@@ -270,4 +293,8 @@ void loop() {
   robo.loop();
 
   light.loop();
+
+  ws.cleanupClients();
+
+  sendFrameToClients();
 }

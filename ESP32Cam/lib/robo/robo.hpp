@@ -9,11 +9,11 @@ private:
     Servo servo1;
     Servo servo2;
 
-    int posX;
-    int posY;
+    int posX = START_POS_X;
+    int posY = START_POS_Y;
 
-    int goalX;
-    int goalY;
+    int goalX = START_POS_X;
+    int goalY = START_POS_Y;
 
     uint32_t lastUpdateTime = 0;
 
