@@ -23,9 +23,9 @@ ESP32-CAM Firmware für das RoboCam-System mit Live-Video-Streaming und Servo-St
 ### Pin-Belegung
 ```
 ESP32-CAM Pin → Komponente
+GPIO 15       → WS2812 Data Pin
 GPIO 14       → Servo 1 (X-Achse/Pan)
 GPIO 2        → Servo 2 (Y-Achse/Tilt)
-GPIO 4        → WS2812 Data Pin
 GPIO 33       → Onboard LED (Status)
 GND           → Gemeinsame Masse
 5V            → Servo/LED Stromversorgung
