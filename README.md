@@ -2,6 +2,13 @@
 
 Ein ESP32-basiertes ferngesteuertes Kamerasystem mit Live-Video-Streaming und Servo-Motor-Steuerung.
 
+## 🤖 Komponenten:
+- 2x MG90S Servos
+- 2640 Kamera Modul (optional)
+- ESP32 CAM-Modul, QIQIAZI ESP32
+- Kabel, Flash Adapter
+- Lichtring (optional)
+
 ## 🎯 Features
 
 - **Live Video Streaming** über WebSocket
