@@ -20,8 +20,30 @@ const char* const WIFI_PASSWORD = "<password>";
 // Maximale Anzahl an Verbindungen
 #define MAX_CLIENTS 5
 
+// Light settings
+#define LIGHT_PIN 15
+#define LIGHT_COUNT 12
+#define LIGHT_SPEED 10
+#define LIGHT_BRIGHTNESS 255
+#define LIGHT_START_POS 2
+
 // Kamera-Stream-Konfiguration
 #define PART_BOUNDARY "123456789000000000000987654321"
+#define FRAME_INTERVAL 150 // Millisekunden zwischen Frames
+
+// Serial-Stream-Konfiguration
+#define SERIAL_BAUDRATE 921600          // Serial Baudrate für Bildübertragung (921.6k - stabil)
+#define SERIAL_FRAME_INTERVAL 500       // Serial Frame-Intervall in ms (2 FPS - stabil)
+#define SERIAL_ENABLED_DEFAULT true     // Serial-Streaming standardmäßig aktiviert
+
+// Performance-Optimierungen
+#define ENABLE_CPU_BOOST true           // CPU auf 240MHz
+#define SERIAL_TX_BUFFER_SIZE 8192      // Größerer TX-Buffer
+#define SERIAL_RX_BUFFER_SIZE 2048      // Größerer RX-Buffer
+
+// WebServer-Konfiguration
+#define ENABLE_WEBSERVER false          // WebServer komplett deaktivieren
+#define ENABLE_WIFI false               // WiFi deaktivieren für reinen Serial-Modus
 
 // GPIO-Pins für Kamera
 #define PWDN_GPIO_NUM     32
