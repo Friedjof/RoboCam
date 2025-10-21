@@ -13,11 +13,8 @@ Robo::~Robo() {
 }
 
 void Robo::init() {
-    servo1.setPeriodHertz(50);
-    servo1.attach(GPIO_SERVO_1, 500, 2400);
-    
-    servo2.setPeriodHertz(50);
-    servo2.attach(GPIO_SERVO_2, 500, 2400);
+    servo1.attach(GPIO_SERVO_1);
+    servo2.attach(GPIO_SERVO_2);
     
     setPosition(START_POS_X, START_POS_Y);
     
