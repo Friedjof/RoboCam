@@ -17,3 +17,23 @@
 #define PCLK_GPIO_NUM     22
 
 #define FACE_DETECT_INTERVAL 150 // ms
+
+#ifndef AP_SSID
+#define AP_SSID "RoboCam-AP"
+#endif
+
+#ifndef AP_PASSWORD
+#define AP_PASSWORD "robocam123"
+#endif
+
+#ifndef AP_CHANNEL
+#define AP_CHANNEL 1
+#endif
+
+#ifndef AP_MAX_CONNECTIONS
+#define AP_MAX_CONNECTIONS 1
+#endif
+
+#ifndef API_PORT
+#define API_PORT 80
+#endif

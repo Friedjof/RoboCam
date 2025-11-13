@@ -3,12 +3,12 @@
 
 #include <Arduino.h>
 #include <esp_log.h>
+#include <list>
+#include <vector>
 
 #include "esp_camera.h"
-#include "fb_gfx.h"
-#include "fd_forward.h"
-#include "fr_forward.h"
-
+#include "human_face_detect_msr01.hpp"
+#include "human_face_detect_mnp01.hpp"
 
 #include "ServoService.hpp"
 
@@ -16,10 +16,10 @@
 
 
 struct FaceBox {
-    int x;        // X-Koordinate (links oben)
-    int y;        // Y-Koordinate (links oben)
-    int width;    // Breite des Vierecks
-    int height;   // Höhe des Vierecks
+    int x;         // X-Koordinate (links oben)
+    int y;         // Y-Koordinate (links oben)
+    int width;     // Breite des Vierecks
+    int height;    // Höhe des Vierecks
     bool detected; // Wurde ein Gesicht erkannt?
 };
 
@@ -31,7 +31,8 @@ public:
   void begin(ServoService* servoX, ServoService* servoY);
   void run();
 
-  FaceBox getFaceBox(camera_fb_t *fb);
+  void getFaceBox(camera_fb_t *fb, FaceBox *result);
+  bool captureRotatedJpeg(std::vector<uint8_t> &jpegBuffer);
 
 private:
   ServoService* servoX;
@@ -39,17 +40,17 @@ private:
 
   uint64_t lastFaceDetectTime = 0;
 
-  mtmn_config_t mtmn_config = {
-    .min_face = 80,
-    .pyramid = 0.709f,
-    .pyramid_times = 4,
-    .p_threshold = {0.6f, 0.7f, 4},
-    .r_threshold = {0.7f, 0.7f, 4},
-    .o_threshold = {0.7f, 0.7f, 4},
-    .type = FAST,
-  };
+  static constexpr int MAX_SERVO_STEP = 5;
+  static constexpr int STEP_SCALE = 60;
+  static constexpr uint8_t PHOTO_JPEG_QUALITY = 80;
 
-  camera_fb_t* fb = nullptr;
+  HumanFaceDetectMSR01 faceDetectorStage1;
+  HumanFaceDetectMNP01 faceDetectorStage2;
+
+  bool rotateRgb565Frame90CW(const camera_fb_t *fb,
+                             std::vector<uint8_t> &rotatedBuffer,
+                             uint16_t &rotatedWidth,
+                             uint16_t &rotatedHeight);
 };
 
 #endif // CAM_CONTROLLER_HPP

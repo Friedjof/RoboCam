@@ -13,10 +13,15 @@ public:
   void run();
 
   void setPosition(int angle);
+  int getAngle();
+
+  static constexpr int MIN_ANGLE = 0;
+  static constexpr int MAX_ANGLE = 180;
+
 private:
   Servo servo;
   uint8_t pin;
-  int angle = 0;
+  int angle = MIN_ANGLE;
 };
 
 #endif // SERVO_SERVICE_HPP
