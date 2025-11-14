@@ -23,7 +23,7 @@ else
   MONITOR_FLAG :=
 endif
 
-.PHONY: all build flash monitor run clean list
+.PHONY: all build flash monitor run clean list webui
 
 all: build
 
@@ -46,6 +46,9 @@ run: flash monitor
 
 clean:
 	$(PLATFORMIO) run --target clean --environment $(BOARD)
+
+webui:
+	python3 tools/build_web_ui.py
 
 # make list         -> nur ESP-Geräte auf /dev/ttyACM<N> mit Nummern (ohne Duplikate)
 list:

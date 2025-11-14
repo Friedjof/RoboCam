@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RoboCam Livestream</title>
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+    body {
+      margin: 0;
+      padding: 1.5rem;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f1115;
+      color: #f1f5f9;
+      display: flex;
+      justify-content: center;
+    }
+    main {
+      width: min(640px, 100%);
+    }
+    h1 {
+      text-align: center;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+    h2 {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+    .frame-wrapper {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: #0f1115;
+      padding-bottom: 1rem;
+    }
+    .frame {
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      background: #0b0d11;
+      min-height: 240px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    img {
+      width: 100%;
+      height: auto;
+      display: block;
+      object-fit: contain;
+    }
+    canvas#faceOverlay {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+    .status {
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1rem;
+      color: #94a3b8;
+    }
+    .status span.value {
+      color: #e2e8f0;
+      font-weight: 600;
+    }
+    .quality-settings,
+    .controls {
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid rgba(148, 163, 184, 0.3);
+    }
+    .quality-settings .hint {
+      margin-bottom: 0.35rem;
+    }
+    .mode-toggle {
+      margin: 0.5rem 0 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .mode-label {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #e2e8f0;
+    }
+    .setting-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .setting-row label {
+      flex: 1;
+      font-size: 0.9rem;
+    }
+    .setting-row input[type="range"] {
+      flex: 2;
+    }
+    .setting-row span.value {
+      min-width: 2.5rem;
+      text-align: right;
+      font-weight: 600;
+    }
+    .quality-select {
+      border-radius: 8px;
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      background: rgba(15, 17, 21, 0.8);
+      color: #e2e8f0;
+      padding: 0.35rem 0.65rem;
+      font-size: 0.95rem;
+    }
+    .switch {
+      position: relative;
+      width: 52px;
+      height: 28px;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: rgba(148, 163, 184, 0.35);
+      border-radius: 999px;
+      transition: background 0.2s ease;
+    }
+    .slider::before {
+      content: "";
+      position: absolute;
+      height: 20px;
+      width: 20px;
+      left: 4px;
+      top: 4px;
+      background: #0f1115;
+      border-radius: 999px;
+      transition: transform 0.2s ease;
+    }
+    .switch input:checked + .slider {
+      background: #38bdf8;
+    }
+    .switch input:checked + .slider::before {
+      transform: translateX(24px);
+    }
+    .controls-header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .hint {
+      font-size: 0.85rem;
+      color: #94a3b8;
+    }
+    .controller {
+      margin-top: 0.75rem;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.5rem;
+    }
+    .controller .spacer {
+      visibility: hidden;
+    }
+    .ctrl-btn {
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      background: rgba(148, 163, 184, 0.08);
+      color: #e2e8f0;
+      font-size: 1.25rem;
+      padding: 0.75rem;
+      cursor: pointer;
+      transition: transform 0.1s ease, background 0.1s ease;
+    }
+    .ctrl-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+    .ctrl-btn:active {
+      transform: scale(0.95);
+      background: rgba(148, 163, 184, 0.2);
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>RoboCam Livestream</h1>
+    <div class="frame-wrapper">
+      <div class="frame" id="frameContainer">
+        <img id="streamFrame" alt="Livestream lädt …">
+        <canvas id="faceOverlay"></canvas>
+      </div>
+      <div class="status">
+        <div>Geräte-IP: <span class="value" id="deviceIp">–</span></div>
+        <div>Status: <span class="value" id="deviceStatus">Verbinde …</span></div>
+        <div>Qualität: <span class="value" id="qualityLabel">High</span></div>
+      </div>
+    </div>
+
+    <section class="quality-settings">
+      <span class="hint">Livestream-Qualität</span>
+      <select id="qualitySelect" class="quality-select">
+        <option value="high">High (VGA/XGA)</option>
+        <option value="medium">Medium (VGA)</option>
+        <option value="low">Low (QVGA)</option>
+        <option value="custom">Custom</option>
+      </select>
+      <div class="setting-row">
+        <label>JPEG-Qualität (10 = bestes Bild)</label>
+        <input type="range" id="qualitySlider" min="10" max="63" value="12">
+        <span class="value" id="qualityValue">12</span>
+      </div>
+    </section>
+
+    <section class="controls">
+      <div class="controls-header">
+        <h2>Manuelle Steuerung</h2>
+        <span class="hint">Jeder Klick bewegt den Servo um 5°.</span>
+      </div>
+      <div class="mode-toggle">
+        <div class="mode-label" id="modeLabel">Manuell</div>
+        <label class="switch">
+          <input type="checkbox" id="autoModeToggle">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <p class="hint">Autonom hält Gesichter automatisch im Zentrum, Manuell über die Pfeiltasten.</p>
+      <div class="controller">
+        <span class="spacer"></span>
+        <button class="ctrl-btn" data-axis="tilt" data-delta="-5">▲</button>
+        <span class="spacer"></span>
+
+        <button class="ctrl-btn" data-axis="pan" data-delta="-5">◄</button>
+        <span class="spacer"></span>
+        <button class="ctrl-btn" data-axis="pan" data-delta="5">►</button>
+
+        <span class="spacer"></span>
+        <button class="ctrl-btn" data-axis="tilt" data-delta="5">▼</button>
+        <span class="spacer"></span>
+      </div>
+      <div class="status">
+        <div>Servos: <span class="value" id="servoStatus">Bereit</span></div>
+      </div>
+    </section>
+  </main>
+  <script>
+    const frameEl = document.getElementById('streamFrame');
+    const statusEl = document.getElementById('deviceStatus');
+    const ipEl = document.getElementById('deviceIp');
+    const servoStatusEl = document.getElementById('servoStatus');
+    const controllerButtons = document.querySelectorAll('.ctrl-btn');
+    const autoToggle = document.getElementById('autoModeToggle');
+    const modeLabel = document.getElementById('modeLabel');
+    const qualitySelect = document.getElementById('qualitySelect');
+    const qualitySlider = document.getElementById('qualitySlider');
+    const qualityValueEl = document.getElementById('qualityValue');
+    const qualityLabel = document.getElementById('qualityLabel');
+    const overlayCanvas = document.getElementById('faceOverlay');
+    const overlayCtx = overlayCanvas.getContext('2d');
+    let currentMode = 'manual';
+    let currentQualityPreset = 'high';
+    let currentQualityValue = 12;
+
+    const streamPort = 81;
+    const streamUrl = `${window.location.protocol}//${window.location.hostname}:${streamPort}/stream`;
+    const PRESET_LABELS = {
+      high: 'High',
+      medium: 'Medium',
+      low: 'Low',
+      custom: 'Custom'
+    };
+    let currentFrameSizeLabel = 'VGA (640x480)';
+    let currentFrameSizeId = 8;
+
+    function startStream() {
+      frameEl.src = streamUrl;
+    }
+
+    function resizeOverlay() {
+      overlayCanvas.width = frameEl.clientWidth || frameEl.offsetWidth;
+      overlayCanvas.height = frameEl.clientHeight || frameEl.offsetHeight;
+      overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+    }
+
+    function drawFaceOverlay(face, detected) {
+      overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+      if (!detected || !face || !face.frameWidth || !face.frameHeight) {
+        return;
+      }
+      const scaleX = overlayCanvas.width / face.frameWidth;
+      const scaleY = overlayCanvas.height / face.frameHeight;
+      overlayCtx.strokeStyle = '#ff4d4d';
+      overlayCtx.lineWidth = 3;
+      overlayCtx.strokeRect(
+        face.x * scaleX,
+        face.y * scaleY,
+        face.width * scaleX,
+        face.height * scaleY
+      );
+    }
+
+    frameEl.onload = () => {
+      statusEl.textContent = 'Livebild aktiv';
+      resizeOverlay();
+    };
+
+    frameEl.onerror = () => {
+      statusEl.textContent = 'Warte auf Kamera …';
+      setTimeout(startStream, 1000);
+    };
+
+    window.addEventListener('resize', resizeOverlay);
+
+    async function refreshStatus() {
+      try {
+        const response = await fetch('/status', { cache: 'no-store' });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.ip) {
+            ipEl.textContent = data.ip;
+          }
+          if (data.status) {
+            statusEl.textContent = data.status === 'ok' ? 'Livebild aktiv' : data.status;
+          }
+          if (typeof data.qualityValue === 'number') {
+            currentQualityValue = data.qualityValue;
+          }
+          if (data.quality) {
+            currentQualityPreset = data.quality;
+          }
+          if (data.frameSizeLabel) {
+            currentFrameSizeLabel = data.frameSizeLabel;
+          }
+          if (typeof data.frameSizeId === 'number') {
+            currentFrameSizeId = data.frameSizeId;
+          }
+          applyQualityToUi();
+        }
+      } catch (error) {
+        statusEl.textContent = 'Status unbekannt';
+      } finally {
+        setTimeout(refreshStatus, 5000);
+      }
+    }
+
+    function applyModeToUi() {
+      const isAuto = currentMode === 'auto';
+      autoToggle.checked = isAuto;
+      modeLabel.textContent = isAuto ? 'Autonom' : 'Manuell';
+      controllerButtons.forEach((button) => {
+        button.disabled = isAuto;
+      });
+      servoStatusEl.textContent = isAuto ? 'Autonom aktiv' : 'Bereit';
+    }
+
+    function presetLabel(id) {
+      return PRESET_LABELS[id] || id;
+    }
+
+    function applyQualityToUi() {
+      if (Array.from(qualitySelect.options).some((opt) => opt.value === currentQualityPreset)) {
+        qualitySelect.value = currentQualityPreset;
+      } else {
+        qualitySelect.value = 'custom';
+      }
+      qualityLabel.textContent = `${presetLabel(currentQualityPreset)} · ${currentFrameSizeLabel}`;
+      qualitySlider.value = currentQualityValue;
+      qualityValueEl.textContent = currentQualityValue;
+    }
+
+    async function refreshMode() {
+      try {
+        const response = await fetch('/mode', { cache: 'no-store' });
+        if (response.ok) {
+          const data = await response.json();
+          currentMode = data.mode || 'manual';
+        }
+      } catch (error) {
+        currentMode = 'manual';
+      } finally {
+        applyModeToUi();
+      }
+    }
+
+    async function setMode(mode) {
+      servoStatusEl.textContent = 'Modus wird aktualisiert …';
+      try {
+        const response = await fetch('/mode', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({ mode })
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const data = await response.json();
+        currentMode = data.mode || mode;
+        applyModeToUi();
+      } catch (error) {
+        servoStatusEl.textContent = 'Moduswechsel fehlgeschlagen';
+        applyModeToUi();
+      }
+    }
+
+    autoToggle.addEventListener('change', () => {
+      setMode(autoToggle.checked ? 'auto' : 'manual');
+    });
+
+    async function refreshQuality() {
+      try {
+        const response = await fetch('/quality', { cache: 'no-store' });
+        if (response.ok) {
+          const data = await response.json();
+          currentQualityPreset = data.preset || currentQualityPreset;
+          currentQualityValue = Number(data.quality) || currentQualityValue;
+          if (data.frameSizeLabel) {
+            currentFrameSizeLabel = data.frameSizeLabel;
+          }
+          if (typeof data.frameSizeId === 'number') {
+            currentFrameSizeId = data.frameSizeId;
+          }
+          if (data.face) {
+            drawFaceOverlay(data.face, data.faceDetected);
+          } else {
+            drawFaceOverlay(null, false);
+          }
+        }
+      } catch (error) {
+        // ignore
+      } finally {
+        applyQualityToUi();
+      }
+    }
+
+    async function setQualityPreset(preset) {
+      servoStatusEl.textContent = 'Passe Qualität an …';
+      try {
+        const response = await fetch('/quality', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({ preset })
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const data = await response.json();
+        currentQualityPreset = data.preset || preset;
+        currentQualityValue = Number(data.quality) || currentQualityValue;
+        if (data.frameSizeLabel) {
+          currentFrameSizeLabel = data.frameSizeLabel;
+        }
+        if (typeof data.frameSizeId === 'number') {
+          currentFrameSizeId = data.frameSizeId;
+        }
+        applyQualityToUi();
+        servoStatusEl.textContent = 'Qualität aktualisiert';
+      } catch (error) {
+        servoStatusEl.textContent = 'Qualität konnte nicht geändert werden';
+        applyQualityToUi();
+      }
+    }
+
+    async function setQualityValue(value) {
+      servoStatusEl.textContent = 'Passe Qualität an …';
+      try {
+        const response = await fetch('/quality', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({ value })
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const data = await response.json();
+        currentQualityPreset = data.preset || 'custom';
+        currentQualityValue = Number(data.quality) || value;
+        if (data.frameSizeLabel) {
+          currentFrameSizeLabel = data.frameSizeLabel;
+        }
+        if (typeof data.frameSizeId === 'number') {
+          currentFrameSizeId = data.frameSizeId;
+        }
+        applyQualityToUi();
+        servoStatusEl.textContent = 'Qualität aktualisiert';
+      } catch (error) {
+        servoStatusEl.textContent = 'Qualität konnte nicht geändert werden';
+        applyQualityToUi();
+      }
+    }
+
+    qualitySelect.addEventListener('change', () => {
+      if (qualitySelect.value === 'custom') {
+        currentQualityPreset = 'custom';
+        applyQualityToUi();
+        return;
+      }
+      setQualityPreset(qualitySelect.value);
+    });
+
+    qualitySlider.addEventListener('input', () => {
+      qualityValueEl.textContent = qualitySlider.value;
+    });
+
+    qualitySlider.addEventListener('change', () => {
+      setQualityValue(qualitySlider.value);
+    });
+
+    async function nudgeServo(axis, delta) {
+      if (currentMode === 'auto') {
+        servoStatusEl.textContent = 'Autonom aktiv – manuelle Eingabe gesperrt';
+        return;
+      }
+      servoStatusEl.textContent = 'Sende Befehl …';
+      try {
+        const response = await fetch('/servo/move', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({ axis, delta })
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const result = await response.json();
+        const label = result.axis === 'pan' ? 'Pan' : 'Tilt';
+        servoStatusEl.textContent = `${label}: ${result.angle}°`;
+      } catch (error) {
+        servoStatusEl.textContent = 'Steuerung fehlgeschlagen';
+      }
+    }
+
+    controllerButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        const axis = button.dataset.axis;
+        const delta = Number(button.dataset.delta);
+        if (!axis || Number.isNaN(delta)) {
+          return;
+        }
+        nudgeServo(axis, delta);
+      });
+    });
+
+    startStream();
+    refreshStatus();
+    refreshMode();
+    refreshQuality();
+  </script>
+</body>
+</html>

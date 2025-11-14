@@ -17,11 +17,12 @@ public:
 
   static constexpr int MIN_ANGLE = 0;
   static constexpr int MAX_ANGLE = 180;
+  static constexpr int DEFAULT_ANGLE = 90;
 
 private:
   Servo servo;
   uint8_t pin;
-  int angle = MIN_ANGLE;
+  int angle = DEFAULT_ANGLE;
 };
 
 #endif // SERVO_SERVICE_HPP

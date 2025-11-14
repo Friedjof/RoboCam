@@ -19,11 +19,11 @@
 #define FACE_DETECT_INTERVAL 150 // ms
 
 #ifndef AP_SSID
-#define AP_SSID "RoboCam-AP"
+#define AP_SSID "RoboCam"
 #endif
 
 #ifndef AP_PASSWORD
-#define AP_PASSWORD "robocam123"
+#define AP_PASSWORD "RoboCam"
 #endif
 
 #ifndef AP_CHANNEL
