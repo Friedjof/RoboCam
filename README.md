@@ -11,7 +11,7 @@ Firmware for the AI Thinker ESP32-CAM that exposes a low-latency livestream plus
 - Includes built-in pan/tilt arrow buttons (backed by an HTTP API) so you can manually steer the camera from the browser when needed, plus a mode toggle to switch to autonomous tracking.
 - Adjustable livestream quality presets (High/Medium/Low) directly from the browser, balancing latency vs. compression without changing the sensor resolution.
 - Dedicated MJPEG stream server on port `81` keeps video smooth even while the REST API serves UI/controls on port `80`.
-- Runs an onboard HTTP server with `/` (livestream UI), `/status` (JSON health check), and `/photo` (latest JPEG) endpoints.
+- Runs an onboard HTTP server with `/` (livestream UI), `/status` (JSON health check), plus `/mode` and `/quality` APIs; the MJPEG stream lives on port `81`.
 - Brings up a stand-alone Wi-Fi AP (`RoboCam-AP` by default) so phones/laptops can connect directly.
 
 ## Hardware
@@ -51,10 +51,9 @@ Camera pin assignments (`PWDN_GPIO_NUM`, `Y2_GPIO_NUM`, etc.) already match the 
 ## Wi-Fi & HTTP API
 1. After boot, the ESP32-CAM enables AP mode. Connect to the SSID printed on the serial output (default `RoboCam-AP`) using the configured password.
 2. The AP IP defaults to `192.168.4.1`. Browse to:
-   - `GET /` → Browser-based livestream UI (uses `/photo` for snapshots, `/stream` for video).
-   - `GET /status` → `{"status":"ok","ip":"<ap-ip>","mode":"manual|auto","qualityValue":12,"frameSizeLabel":"VGA (640x480)"}`.
-   - `GET /photo` → Always-fresh JPEG snapshot with the current face bounding box burned into the image.
-   - `GET http://<ap-ip>:81/stream` → Continuous MJPEG stream (used by the UI).
+   - `GET /` → Browser-based livestream UI (HTML served on port 80, stream on port 81).
+   - `GET /status` → `{"status":"ok","ip":"<ap-ip>","mode":"manual|auto","qualityValue":12,"frameSizeLabel":"VGA (640x480)","face":{...}}`.
+   - `GET http://<ap-ip>:81/stream` → Continuous MJPEG stream (native sensor JPEGs).
    - `GET /mode` → `{"mode":"manual|auto"}` to inspect the tracking state.
    - `GET /quality` → `{"preset":"high|medium|low|custom","quality":<jpeg-value>,"frameSizeLabel":"..."}` to inspect the active preset/resolution.
    - `POST /servo/move` → Form-encoded body with `axis=pan|tilt` and `delta=<int>` (±15° max per request) to nudge the servos (fails with HTTP 409 while auto mode runs).
@@ -63,14 +62,14 @@ Camera pin assignments (`PWDN_GPIO_NUM`, `Y2_GPIO_NUM`, etc.) already match the 
 3. Disable caching if you fetch images in your own browser/script; the firmware already sends `Cache-Control: no-store`.
 
 ## Face Detection & Tracking
-- Every requested frame is piped through the MSR01/MNP01 detector chain **only when `/photo` (or the `/` livestream) is actively fetching data**, so there is zero CPU cost when nobody is watching.
-- The detector output burns a red rectangle into the RGB565 buffer before JPEG compression. When autonomous mode is enabled, the same data is reused every `FACE_DETECT_INTERVAL` to nudge the servos by up to ±3° per axis so the subject stays centered.
+- Every requested frame is piped through the MSR01/MNP01 detector chain only when the stream or status endpoint is active, so there is zero CPU cost when nobody is watching.
+- The detector output is published via `/status` (`face` object) and optionally burned into the MJPEG stream when server-side overlays are enabled; the browser also draws the box client-side to avoid re-encoding.
 - Switch back to manual mode whenever you need deterministic positioning; the firmware stops issuing servo commands immediately.
 
 ## Camera Quality Preset
 - `CamController::begin` sets the camera to `FRAMESIZE_VGA` (640×480) while keeping the detector-friendly `PIXFORMAT_RGB565`.
 - Sensor tuning applies brightness `1`, enables lens correction (`lenc`), AWB/AEC, AGC with `GAINCEILING_2X`, raw gamma, and a JPEG quality target of `12`.
-- `CamController::captureJpegWithFaceBox()` reuses the same frame to run face detection on-demand, draws a red rectangle on the RGB565 buffer, and only then compresses it to JPEG for `/photo`.
+- `CamController::captureJpegWithFaceBox()` reuses the same frame to run face detection on-demand, draws a red rectangle on the RGB565 buffer, and only then compresses it to JPEG for the optional server-side overlay or snapshots.
 - Adjust the tuning values inside `lib/CamController/CamController.cpp::applyUltraWideSensorPreset()` if your lighting or lens differs. Lower JPEG quality numbers mean higher visual quality but larger frames; values between `10` and `16` typically balance sharpness and Wi-Fi bandwidth.
 
 ## Manual Servo Control
@@ -89,7 +88,7 @@ Camera pin assignments (`PWDN_GPIO_NUM`, `Y2_GPIO_NUM`, etc.) already match the 
   - `High` → `FRAMESIZE_XGA` (1024×768) @ JPEG quality `12`.
   - `Medium` → `FRAMESIZE_VGA` (640×480) @ JPEG quality `18`.
   - `Low` → `FRAMESIZE_QVGA` (320×240) @ JPEG quality `24` (best latency).
-- Use the dropdown on `/` or `POST /quality` to change the preset; the firmware reconfigures the sensor immediately so `/photo` and `/stream` both reflect the new resolution. Move the slider (10–63) when you just need a different compression level—the UI switches to “Custom” and keeps the current resolution.
+- Use the dropdown on `/` or `POST /quality` to change the preset; the firmware reconfigures the sensor immediately so `/stream` reflects the new resolution. Move the slider (10–63) when you just need a different compression level—the UI switches to “Custom” and keeps the current resolution.
 
 ## Web UI Asset Pipeline
 - The readable source lives at `web/index.html`. Edit this file to change the livestream UI (HTML/CSS/JS).

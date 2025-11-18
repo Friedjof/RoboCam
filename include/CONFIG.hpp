@@ -23,7 +23,7 @@
 #endif
 
 #ifndef AP_PASSWORD
-#define AP_PASSWORD "RoboCam"
+#define AP_PASSWORD ""
 #endif
 
 #ifndef AP_CHANNEL
