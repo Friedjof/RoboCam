@@ -154,81 +154,6 @@ void CamController::getFaceBox(camera_fb_t *fb, FaceBox *result) {
   }
 }
 
-bool CamController::captureJpeg(std::vector<uint8_t> &jpegBuffer) {
-  camera_fb_t *frame = esp_camera_fb_get();
-  if (!frame) {
-    Serial.println("Camera capture failed");
-    return false;
-  }
-
-  if (frame->format == PIXFORMAT_JPEG) {
-    jpegBuffer.assign(frame->buf, frame->buf + frame->len);
-    esp_camera_fb_return(frame);
-    return true;
-  }
-
-  const bool success = this->encodeFrameToJpeg(frame, jpegBuffer);
-  esp_camera_fb_return(frame);
-  return success;
-}
-
-bool CamController::captureJpegWithFaceBox(std::vector<uint8_t> &jpegBuffer) {
-  camera_fb_t *frame = esp_camera_fb_get();
-  if (!frame) {
-    Serial.println("Camera capture failed");
-    return false;
-  }
-
-  std::vector<uint8_t> rgbBuffer;
-  camera_fb_t rgbFrame = {};
-  if (!this->decodeJpegToRgb565(frame, rgbBuffer, rgbFrame)) {
-    esp_camera_fb_return(frame);
-    return false;
-  }
-
-  FaceBox faceBox = {};
-  this->getFaceBox(&rgbFrame, &faceBox);
-  this->storeFaceBox(faceBox, rgbFrame.width, rgbFrame.height);
-  if (faceBox.detected) {
-    this->drawFaceBox(&rgbFrame, faceBox);
-  }
-
-  const bool success = this->encodeFrameToJpeg(&rgbFrame, jpegBuffer);
-  esp_camera_fb_return(frame);
-  return success;
-}
-
-bool CamController::encodeFrameToJpeg(camera_fb_t *frame, std::vector<uint8_t> &jpegBuffer) {
-  if (!frame) {
-    return false;
-  }
-
-  uint8_t *jpegData = nullptr;
-  size_t jpegLength = 0;
-  const bool converted = fmt2jpg(
-    frame->buf,
-    frame->len,
-    frame->width,
-    frame->height,
-    frame->format,
-    this->photoJpegQuality,
-    &jpegData,
-    &jpegLength
-  );
-
-  if (!converted || !jpegData || jpegLength == 0) {
-    Serial.println("JPEG conversion failed");
-    if (jpegData) {
-      free(jpegData);
-    }
-    return false;
-  }
-
-  jpegBuffer.assign(jpegData, jpegData + jpegLength);
-  free(jpegData);
-  return true;
-}
-
 void CamController::applyUltraWideSensorPreset(sensor_t *sensor) {
   if (!sensor) {
     return;
@@ -302,43 +227,6 @@ void CamController::storeFaceBox(const FaceBox &box, uint16_t width, uint16_t he
   this->lastFaceFrameHeight = height;
   this->lastFaceTimestamp = esp_timer_get_time();
   portEXIT_CRITICAL(&this->faceMux);
-}
-
-void CamController::drawFaceBox(camera_fb_t *frame, const FaceBox &faceBox) {
-  if (!frame || frame->format != PIXFORMAT_RGB565) {
-    return;
-  }
-
-  const int width = frame->width;
-  const int height = frame->height;
-  if (width <= 0 || height <= 0) {
-    return;
-  }
-
-  const int left = constrain(faceBox.x, 0, width - 1);
-  const int top = constrain(faceBox.y, 0, height - 1);
-  const int right = constrain(faceBox.x + faceBox.width - 1, 0, width - 1);
-  const int bottom = constrain(faceBox.y + faceBox.height - 1, 0, height - 1);
-  if (left >= right || top >= bottom) {
-    return;
-  }
-
-  uint16_t *pixels = reinterpret_cast<uint16_t *>(frame->buf);
-  for (int thickness = 0; thickness < this->FACE_BOX_THICKNESS; ++thickness) {
-    const int topRow = std::max(top - thickness, 0);
-    const int bottomRow = std::min(bottom + thickness, height - 1);
-    for (int x = left; x <= right; ++x) {
-      pixels[topRow * width + x] = this->FACE_BOX_COLOR;
-      pixels[bottomRow * width + x] = this->FACE_BOX_COLOR;
-    }
-
-    const int leftCol = std::max(left - thickness, 0);
-    const int rightCol = std::min(right + thickness, width - 1);
-    for (int y = top; y <= bottom; ++y) {
-      pixels[y * width + leftCol] = this->FACE_BOX_COLOR;
-      pixels[y * width + rightCol] = this->FACE_BOX_COLOR;
-    }
-  }
 }
 
 bool CamController::decodeJpegToRgb565(const camera_fb_t *src,

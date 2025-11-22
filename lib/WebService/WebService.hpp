@@ -23,7 +23,12 @@ public:
 
   void begin(CamController* camController, ServoService* servoX, ServoService* servoY);
   void handle();
+
   bool isAutoTrackingEnabled() const;
+  void setStreamHandler(esp_err_t (*handler)(httpd_req_t *r));
+  CamController* getCamController() { return camController; }
+  ServoService* getServoX() { return servoX; }
+  ServoService* getServoY() { return servoY; }
 
 private:
   static constexpr int SERVO_MANUAL_DELTA_LIMIT = 15;
@@ -47,6 +52,8 @@ private:
 
   WebServer server;
   httpd_handle_t streamServer = nullptr;
+  esp_err_t (*streamHandler)(httpd_req_t *r) = nullptr;
+
   CamController* camController = nullptr;
   ServoService* servoX = nullptr;
   ServoService* servoY = nullptr;

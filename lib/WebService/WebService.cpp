@@ -16,57 +16,7 @@ const WebService::QualityPreset QUALITY_PRESETS[] = {
 constexpr size_t QUALITY_PRESET_COUNT = sizeof(QUALITY_PRESETS) / sizeof(QUALITY_PRESETS[0]);
 
 static const char STREAM_CONTENT_TYPE[] = "multipart/x-mixed-replace; boundary=frame";
-
-esp_err_t streamHandler(httpd_req_t *req) {
-  auto* service = static_cast<WebService*>(req->user_ctx);
-  if (!service) {
-    return ESP_FAIL;
-  }
-
-  esp_err_t res = httpd_resp_set_type(req, STREAM_CONTENT_TYPE);
-  if (res != ESP_OK) {
-    return res;
-  }
-  httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
-
-  char partBuffer[64];
-  while (true) {
-    camera_fb_t *fb = esp_camera_fb_get();
-    if (!fb) {
-      Serial.println("stream: capture failed");
-      res = ESP_FAIL;
-      break;
-    }
-
-    const size_t headerLen = snprintf(
-      partBuffer,
-      sizeof(partBuffer),
-      "--frame\r\nContent-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n",
-      static_cast<unsigned>(fb->len)
-    );
-
-    res = httpd_resp_send_chunk(req, partBuffer, headerLen);
-    if (res == ESP_OK) {
-      res = httpd_resp_send_chunk(
-        req,
-        reinterpret_cast<const char *>(fb->buf),
-        fb->len
-      );
-    }
-    if (res == ESP_OK) {
-      res = httpd_resp_send_chunk(req, "\r\n", 2);
-    }
-
-    esp_camera_fb_return(fb);
-
-    if (res != ESP_OK) {
-      break;
-    }
-  }
-
-  return res;
-}
-}
+} // namespace
 
 WebService::WebService(uint16_t port)
   : server(port) {}
@@ -182,10 +132,6 @@ void WebService::handleStatus() {
 
 void WebService::handlePhoto() {
   std::vector<uint8_t> jpegBuffer;
-  if (!this->camController->captureJpegWithFaceBox(jpegBuffer)) {
-    this->server.send(503, "text/plain", "Unable to capture frame");
-    return;
-  }
 
   this->server.sendHeader("Cache-Control", "no-store");
   this->server.sendHeader("Access-Control-Allow-Origin", "*");
@@ -369,8 +315,16 @@ String WebService::frameSizeLabel(framesize_t size) const {
   return label;
 }
 
+void WebService::setStreamHandler(esp_err_t (*handler)(httpd_req_t *r)) {
+  this->streamHandler = handler;
+}
+
 void WebService::startStreamServer() {
-  if (this->streamServer) {
+  if (!this->streamHandler) {
+    Serial.println("Stream server postponed (handler not set)");
+    return;
+  }
+  if (this->streamServer != nullptr && this->streamServer != NULL) {
     httpd_stop(this->streamServer);
     this->streamServer = nullptr;
   }
@@ -385,8 +339,10 @@ void WebService::startStreamServer() {
   httpd_uri_t streamUri = {
     .uri = "/stream*",
     .method = HTTP_GET,
-    .handler = streamHandler,
-    .user_ctx = this
+    .handler = this->streamHandler,
+    .user_ctx = this,
+    .is_websocket = false,
+    .handle_ws_control_frames = false
   };
 
   if (httpd_start(&this->streamServer, &config) == ESP_OK) {

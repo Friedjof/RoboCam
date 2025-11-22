@@ -36,8 +36,7 @@ public:
   bool getLastFaceBox(FaceBox &box, uint16_t &width, uint16_t &height, uint64_t &timestamp) const;
 
   void getFaceBox(camera_fb_t *fb, FaceBox *result);
-  bool captureJpeg(std::vector<uint8_t> &jpegBuffer);
-  bool captureJpegWithFaceBox(std::vector<uint8_t> &jpegBuffer);
+  void storeFaceBox(const FaceBox &box, uint16_t width, uint16_t height);
 
 private:
   ServoService* servoX = nullptr;
@@ -61,10 +60,8 @@ private:
   sensor_t* activeSensor = nullptr;
 
   void applyUltraWideSensorPreset(sensor_t *sensor);
-  bool encodeFrameToJpeg(camera_fb_t *frame, std::vector<uint8_t> &jpegBuffer);
-  void drawFaceBox(camera_fb_t *frame, const FaceBox &faceBox);
+
   bool decodeJpegToRgb565(const camera_fb_t *src, std::vector<uint8_t> &rgbBuffer, camera_fb_t &rgbFrame);
-  void storeFaceBox(const FaceBox &box, uint16_t width, uint16_t height);
 };
 
 #endif // CAM_CONTROLLER_HPP
