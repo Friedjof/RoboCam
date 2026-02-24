@@ -18,6 +18,8 @@ constexpr size_t QUALITY_PRESET_COUNT = sizeof(QUALITY_PRESETS) / sizeof(QUALITY
 static const char STREAM_CONTENT_TYPE[] = "multipart/x-mixed-replace; boundary=frame";
 } // namespace
 
+constexpr uint16_t WebService::DNS_PORT;
+
 WebService::WebService(uint16_t port)
   : server(port) {}
 
@@ -28,6 +30,7 @@ void WebService::begin(CamController* camController, ServoService* servoX, Servo
 
   this->applyQuality(this->currentPreset());
   this->registerRoutes();
+  this->startDnsServer();
   this->server.begin();
   this->startStreamServer();
 
@@ -39,6 +42,7 @@ void WebService::begin(CamController* camController, ServoService* servoX, Servo
 }
 
 void WebService::handle() {
+  this->dnsServer.processNextRequest();
   this->server.handleClient();
 }
 
@@ -82,8 +86,13 @@ void WebService::registerRoutes() {
     this->server.send(204);
   });
 
+  this->server.on("/generate_204", HTTP_ANY, [this]() { this->handleCaptivePortalRedirect(); });
+  this->server.on("/hotspot-detect.html", HTTP_ANY, [this]() { this->handleCaptivePortalRedirect(); });
+  this->server.on("/ncsi.txt", HTTP_ANY, [this]() { this->handleCaptivePortalRedirect(); });
+  this->server.on("/connecttest.txt", HTTP_ANY, [this]() { this->handleCaptivePortalRedirect(); });
+
   this->server.onNotFound([this]() {
-    this->server.send(404, "text/plain", "Endpoint not found");
+    this->handleCaptivePortalRedirect();
   });
 }
 
@@ -350,4 +359,24 @@ void WebService::startStreamServer() {
   } else {
     Serial.println("Failed to start stream server");
   }
+}
+
+void WebService::startDnsServer() {
+  const IPAddress apIp = WiFi.softAPIP();
+
+  this->dnsServer.stop();
+  if (apIp == IPAddress()) {
+    Serial.println("DNS server not started (AP IP unavailable)");
+    return;
+  }
+
+  if (!this->dnsServer.start(DNS_PORT, "*", apIp)) {
+    Serial.println("Failed to start DNS server");
+  }
+}
+
+void WebService::handleCaptivePortalRedirect() {
+  const String target = String("http://") + WiFi.softAPIP().toString() + "/";
+  this->server.sendHeader("Location", target, true);
+  this->server.send(302, "text/plain", "Redirecting to captive portal");
 }

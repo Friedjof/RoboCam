@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include <WebServer.h>
+#include <DNSServer.h>
 #include <vector>
 #include "esp_http_server.h"
 
@@ -43,6 +44,8 @@ private:
   void handleQualityUpdate();
   void handleServoMove();
   void startStreamServer();
+  void startDnsServer();
+  void handleCaptivePortalRedirect();
   String frameSizeLabel(framesize_t size) const;
 
   const QualityPreset* findPreset(const String &id) const;
@@ -53,6 +56,8 @@ private:
   WebServer server;
   httpd_handle_t streamServer = nullptr;
   esp_err_t (*streamHandler)(httpd_req_t *r) = nullptr;
+  DNSServer dnsServer;
+  static constexpr uint16_t DNS_PORT = 53;
 
   CamController* camController = nullptr;
   ServoService* servoX = nullptr;

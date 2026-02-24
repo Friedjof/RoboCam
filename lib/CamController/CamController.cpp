@@ -140,6 +140,8 @@ void CamController::getFaceBox(camera_fb_t *fb, FaceBox *result) {
     candidates
   );
 
+  Serial.printf("Detected %d faces\n", static_cast<int>(detections.size()));
+
   if (!detections.empty()) {
     const auto &face = detections.front();
     if (face.box.size() >= 4) {
